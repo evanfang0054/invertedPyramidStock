@@ -1,7 +1,8 @@
 {
   "name": "invertedpyramidstock",
   "private": true,
-  "version": "0.0.1",
+  "description": "倒金字塔股票分析工具是量化股票价格分析应用，基于斐波那契回调和黄金分割理论，提供股票价格的关键支撑位和阻力位分析。提供直观的用户界面和实时数据分析能力，让我们做出更加理性的投资决策。",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
