@@ -8,8 +8,8 @@ import {
   message,
   Row,
   Col,
-  Descriptions,
   Skeleton,
+  Statistic,
 } from 'antd';
 import axios from 'axios';
 import { DetailPopover } from '@/components';
@@ -24,17 +24,87 @@ import {
 import Details from './details';
 import Reckoner from './reckoner';
 import columns from './columns';
-// import stocks from './stocks.json';
+import { motion } from 'framer-motion';
+import styled from 'styled-components';
+import { fadeIn } from '@/animations';
+import { StopOutlined, CalculatorOutlined, SyncOutlined } from '@ant-design/icons';
 
 const CancelToken = axios.CancelToken;
 let source = CancelToken.source();
 
+// 修改 StockData 接口定义，使其更严格
+interface StockData {
+  name: string;
+  code: string | number;
+  price?: number;
+  CNYPrice: string | number;  // 移除可选标记
+  exchange: string;  // 移除可选标记
+}
+
+interface DataToShowMap {
+  [key: number]: StockData[];
+}
+
+interface AllDataMap {
+  [key: string]: {
+    price: number | string;
+    code: string | number;
+    exchange: string;
+  };
+}
+
+// 添加样式组件
+const StyledApp = styled.div`
+  padding: 20px;
+  
+  .header-controls {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+  }
+
+  .content-wrapper {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+
+  .mobile-card {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .card-header {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+  }
+`;
+
 const App = () => {
-  const dataToShowMap = useRef({}).current;
+  const dataToShowMap = useRef<DataToShowMap>({}).current;
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentData, setCurrentData] = useState([]);
-  const [dataToShow, setDataToShow] = useState([]);
+  const [currentData, setCurrentData] = useState<StockData[]>([]);
+  const [dataToShow, setDataToShow] = useState<StockData[]>([]);
   const [isNewDate, setIsNewData] = useState(true);
   const { open: detail, ...detailProps } = useModalTemplate(); // 详情
   const { open: reckoner, ...reckonerProps } = useModalTemplate(); // 计算器
@@ -42,7 +112,7 @@ const App = () => {
   useEffect(() => {
     const startIndex = (currentPage - 1) * PAGE_SIZE_MAX;
     const endIndex = startIndex + PAGE_SIZE_MAX;
-    const _dataToShow: any = stocks.slice(startIndex, endIndex);
+    const _dataToShow: StockData[] = stocks.slice(startIndex, endIndex);
 
     setDataToShow(_dataToShow);
     isNewDate && fetchAllData(_dataToShow);
@@ -56,18 +126,20 @@ const App = () => {
     return axios.get(`https://qt.gtimg.cn/q=${codes}`);
   };
 
-  const fetchAllData = async (dataToShow: any) => {
+  const fetchAllData = async (dataToShow: StockData[]) => {
     setLoading(false);
     try {
-      let dataToShows = [];
+      let dataToShows: StockData[] = [];
       if (dataToShowMap[currentPage]) {
         dataToShows = dataToShowMap[currentPage];
       } else {
         // 发起所有查询请求
         const codes = dataToShow.map(
-          (item: any) => `${item?.exchange?.toLocaleLowerCase()}${item.code}`,
+          (item: StockData) => `${item.exchange.toLowerCase()}${item.code}`,
         );
-        const promiseStr = await fetchData(codes);
+        // 将数组转换为字符串
+        const codesStr = codes.join(',');
+        const promiseStr = await fetchData(codesStr);
         const promiseList = promiseStr?.data
           ?.replace(/\n/g, '')
           .split(';')
@@ -105,17 +177,21 @@ const App = () => {
   };
 
   const dataSource = useMemo(() => {
-    const allDataMap = currentData.reduce((map, item: any) => {
+    const allDataMap: AllDataMap = currentData.reduce((map: AllDataMap, item: StockData) => {
       const keyCode = item?.code;
       const keyName = item?.name?.trim() || '';
       const price = item?.CNYPrice || 0;
       const exchange = item?.exchange || 'sz';
       const code = item?.code || 0;
-      map[keyCode] = {
-        price,
-        code,
-        exchange,
-      };
+      
+      if (keyCode) {
+        map[keyCode.toString()] = {
+          price,
+          code,
+          exchange,
+        };
+      }
+      
       map[keyName] = {
         price,
         code,
@@ -128,7 +204,7 @@ const App = () => {
     // console.log(allDataMap);
     // console.log('====================================');
 
-    const list = dataToShow.map((item: any) => ({
+    const list = dataToShow.map((item: StockData) => ({
       ...item,
       code: allDataMap[item.code || item.name]?.code || null,
       CNYPrice: allDataMap[item.code || item.name]?.price || null,
@@ -150,7 +226,7 @@ const App = () => {
     setLoading(true);
   };
 
-  const TableRes = ({ position = ['bottomRight'] }) => {
+  const TableRes = ({ position = ['bottomRight'] as ('bottomRight' | 'topRight')[]}): JSX.Element => {
     return (
       <Table
         rowKey={(record, index) =>
@@ -209,18 +285,20 @@ const App = () => {
     );
   };
 
-  const copyText = (item: any) => {
-    // 创建一个虚拟的 textarea 元素，将文本复制到其中
+  const copyText = (item: StockData) => {
     let isSPrice = false;
     const sPrice = LADDER.map(s => {
+      const itemPrice = Number(item.price || 0);
+      const itemCNYPrice = Number(item.CNYPrice || 0);
+      
       !isSPrice &&
         (isSPrice = isScalePrice(
-          item.CNYPrice,
-          Number(scalePrice(item.price, s)),
+          itemCNYPrice,
+          Number(scalePrice(itemPrice, s)),
           s,
         ));
       if (isSPrice) {
-        return `${s} 👉 ${scalePrice(item.price, s)}`;
+        return `${s} 👉 ${scalePrice(itemPrice, s)}`;
       }
       return false;
     });
@@ -243,110 +321,133 @@ const App = () => {
   };
 
   return (
-    <div className='App'>
-      <div style={{ textAlign: 'left' }}>
-        <Space wrap>
-          <Switch defaultChecked onChange={setIsNewData} />
-          {/* <Button type='dashed' size='large' onClick={() => {
-            window.open('http://localhost:7001/information/equityMicro/sl?equityNo=5080000000028891')
-          }}>
-            open
-          </Button> */}
+    <StyledApp>
+      <motion.div 
+        className="header-controls"
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn}
+      >
+        <Space wrap size={[16, 16]} align="center">
+          <Switch 
+            defaultChecked 
+            onChange={setIsNewData}
+            checkedChildren="自动更新"
+            unCheckedChildren="手动更新"
+          />
           <Button.Group>
-            <Button type='dashed' size='large' onClick={() => cancel()}>
+            <Button 
+              type="dashed" 
+              size="large" 
+              onClick={() => cancel()}
+              icon={<StopOutlined />}
+            >
               取消请求
             </Button>
             <Button
-              type='primary'
-              size='large'
+              type="primary"
+              size="large"
               onClick={() => fetchAllData(dataToShow)}
+              icon={<SyncOutlined spin={!loading} />}
             >
               获取最新数据
             </Button>
           </Button.Group>
           <Button
-              type='dashed'
-              size='large'
-              onClick={() => {
-                reckoner?.({
-                  props: {
-                    title: '计算器',
-                  },
-                  closeForm: true,
-                }).then(() => new Promise((resolve: any) => resolve()));
-              }}
-            >
-              计算器
-            </Button>
+            type="dashed"
+            size="large"
+            onClick={() => {
+              reckoner?.({
+                props: { title: '计算器' },
+                closeForm: true,
+              }).then(() => new Promise((resolve: any) => resolve()));
+            }}
+            icon={<CalculatorOutlined />}
+          >
+            计算器
+          </Button>
           <Select
             showSearch
-            // onSelect={(value: string) => {
-            //   const [code, name] = value.split('_');
-            //   fetchAllData([{ code, name }]);
-            // }}
-            placeholder={'筛选票子'}
-            style={{ width: '160px' }}
-            options={stocks.map((item, index) => ({
-              label: `${Math.ceil((index + 1) / PAGE_SIZE_MAX)}/${item.name}(${
-                item.code
-              })`,
+            placeholder="筛选票子"
+            style={{ width: '200px' }}
+            options={stocks.map((item: StockData, index: number) => ({
+              label: `${Math.ceil((index + 1) / PAGE_SIZE_MAX)}/${item.name}(${item.code})`,
               value: `${item.code}_${item.price}_${index}`,
             }))}
             filterOption={(input: any, option: any) =>
-              `${option?.label}_${option?.value}_${getFirstPinyinLetter(
-                option?.label,
-              )}`
+              `${option?.label}_${option?.value}_${getFirstPinyinLetter(option?.label)}`
                 .toLowerCase()
                 .includes(input.toLowerCase())
             }
           />
         </Space>
-      </div>
+      </motion.div>
 
-      <Row>
-        <Col xs={24} md={0} style={{ marginTop: '20px' }}>
-          <Skeleton loading={!loading} active>
-            {/* 在小屏幕上显示摘要信息 */}
-            {dataSource.map((item, index) => {
-              return (
-                <div onDoubleClick={() => copyText(item)}>
-                  <Descriptions
-                    title={
-                      <DetailPopover
-                        text={`${item.name} / ${item.code} / 股价:${item.price} / 收盘价:${item.CNYPrice}`}
-                        code={item.code}
-                        exchange={item.exchange}
-                        placement='top'
-                      />
-                    }
-                    column={3}
-                    key={index}
-                  >
-                    {LADDER.map((lItem, key) => {
-                      return (
-                        <Descriptions.Item label={lItem} key={key}>
-                          {formatPrice(item, lItem)}
-                        </Descriptions.Item>
-                      );
-                    })}
-                  </Descriptions>
-                </div>
-              );
-            })}
-          </Skeleton>
-        </Col>
+      <Row gutter={[24, 24]}>
         <Col xs={24} md={0}>
-          {/* 在中大屏幕上显示表格 */}
-          <TableRes position={['topRight']} />
+          <motion.div 
+            className="content-wrapper"
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <Skeleton loading={!loading} active>
+              {dataSource.map((item, index) => {
+                const safeItem = {
+                  ...item,
+                  code: item.code?.toString() || '',
+                  exchange: item.exchange || '',
+                };
+                
+                return (
+                  <motion.div 
+                    className="mobile-card"
+                    key={index}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onDoubleClick={() => copyText(item as StockData)}
+                  >
+                    <div className="card-header">
+                      <DetailPopover
+                        text={`${safeItem.name} / ${safeItem.code} / 股价:${safeItem.price} / 收盘价:${safeItem.CNYPrice}`}
+                        code={safeItem.code}
+                        exchange={safeItem.exchange}
+                        placement="top"
+                      />
+                    </div>
+                    <Row gutter={[16, 16]}>
+                      {LADDER.map((lItem, key) => (
+                        <Col span={8} key={key}>
+                          <Statistic
+                            title={lItem}
+                            value={formatPrice(item, lItem)}
+                            precision={2}
+                          />
+                        </Col>
+                      ))}
+                    </Row>
+                  </motion.div>
+                );
+              })}
+            </Skeleton>
+          </motion.div>
         </Col>
-        <Col xs={0} md={24}>
-          {/* 在中大屏幕上显示表格 */}
-          <TableRes />
+        
+        <Col xs={24} md={24}>
+          <motion.div 
+            className="content-wrapper"
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <TableRes />
+          </motion.div>
         </Col>
       </Row>
+      
       <Details {...detailProps} />
-      <Reckoner {...reckonerProps}/>
-    </div>
+      <Reckoner {...reckonerProps} />
+    </StyledApp>
   );
 };
 
