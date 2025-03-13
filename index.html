@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- <link rel="icon" type="image/svg+xml" href="/" /> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>invertedPyramidStock</title>
+    <script language="JavaScript">
+      function setStocks(s) {
+        localStorage.setItem('stockList', JSON.stringify(s))
+      }
+      var script = document.createElement('script');
+      script.src = './setStocks.js?' + Date.now();
+      document.head.appendChild(script);
+    </script>
+    <script type="module" crossorigin src="/invertedPyramidStock/assets/js/index-3eb78278.js"></script>
+    <link rel="modulepreload" crossorigin href="/invertedPyramidStock/assets/js/react-vendor-29960817.js">
+    <link rel="modulepreload" crossorigin href="/invertedPyramidStock/assets/js/utils-vendor-d644165e.js">
+    <link rel="modulepreload" crossorigin href="/invertedPyramidStock/assets/js/antd-vendor-1216a676.js">
+  </head>
+  <body>
+    <div id="root"></div>
+    
+  </body>
+</html>
