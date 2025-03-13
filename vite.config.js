@@ -5,9 +5,11 @@ import { fileURLToPath } from 'url'
 import viteCompression from 'vite-plugin-compression'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const repo = 'invertedPyramidStock';
 
-export default defineConfig({
-  base: '/invertedPyramidStock/',
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? `/${repo}/` : '/',
+  publicPath: mode === 'production' ? `/${repo}/` : '/',
   plugins: [
     react(),
     // GZIP 压缩
@@ -83,4 +85,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'antd'],
   },
-})
+}))
