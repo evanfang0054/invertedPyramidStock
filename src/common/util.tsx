@@ -40,7 +40,7 @@ const isScalePrice = (CNYPrice: number, oldPrice: number, scale: number) => {
   );
 };
 
-const getFirstPinyinLetter = chineseString => {
+const getFirstPinyinLetter = (chineseString: string) => {
   // 将中文字符串转换为拼音
   const nameArray = chineseString?.replace(/\([^)]*\)/, '')?.split('');
   const pinyinArray = nameArray.map(
