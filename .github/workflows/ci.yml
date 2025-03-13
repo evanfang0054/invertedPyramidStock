@@ -1,5 +1,5 @@
 # 项目名
-name: Deploy to GitHub Pages
+name: invertedPyramidStock
 
 # 只有在master分支发生push事件时触发
 on:
@@ -9,42 +9,53 @@ on:
 
 # 工作流
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest # 运行环境
 
     steps:
       # 拉代码
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v1
 
-      # 设置 Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v1
         with:
-          node-version: '18'
+          node-version: 18.16.0
 
       # 安装 pnpm
-      - name: Setup PNPM
+      - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 8
+          run_install: false
+
+      # 获取 pnpm store 目录
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      # 设置 pnpm 缓存
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       # 安装依赖
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
 
       # 打包代码
-      - name: Build
-        run: pnpm build
+      - name: Build Project
+        run: pnpm run build
 
       # 部署到github
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Deploy to Github
+        uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          force_orphan: true
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: 'deploy: ${{ github.event.head_commit.message }}'
+          branch: build # 打包的内容放到build分支下
+          folder: dist
+          token: ${{ secrets.GITHUB_TOKEN }} # 添加 token 用于认证
