@@ -58,4 +58,4 @@ jobs:
         with:
           branch: build # 打包的内容放到build分支下
           folder: dist
-          token: ${{ secrets.GITHUB_TOKEN }} # 添加 token 用于认证
+          token: ${{ secrets.ACCESS_TOKEN }} # 添加 token 用于认证
