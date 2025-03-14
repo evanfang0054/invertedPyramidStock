@@ -4,9 +4,9 @@ import { Form, Modal } from 'antd'
 import { useState, useRef } from 'react'
 import { PromiseLikeCollection } from '@/models/constructor'
 
-type Props = {
-  [key: string]: any
-}
+type IProps = {
+  [key: string]: any;
+};
 
 type ModalTemplateHook = Pick<ModalProps, 'visible' | 'onOk' | 'onCancel' | 'confirmLoading'> & {
   form: FormInstance;
@@ -14,7 +14,7 @@ type ModalTemplateHook = Pick<ModalProps, 'visible' | 'onOk' | 'onCancel' | 'con
    * @method open - 可选传参，激活组件，链式调用是接submit输出而不是激活后
    * */
   open(option?: {
-    props?: Partial<ModalProps> & Props;
+    props?: Partial<ModalProps> & IProps;
     record?: object;
     closeForm?: boolean,
     useConfirmText?: string,
